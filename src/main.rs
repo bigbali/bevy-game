@@ -1,10 +1,8 @@
 use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
+    input::mouse::MouseButtonInput,
     prelude::*,
 };
-use smooth_bevy_cameras::{controllers::fps::FpsCameraPlugin, LookTransformPlugin};
-
-use crate::camera::CameraControllerPlugin;
 
 mod camera;
 
@@ -15,10 +13,12 @@ fn main() {
 
     app.add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(CameraControllerPlugin)
+        .add_plugin(camera::CameraControllerPlugin)
         .add_startup_system(setup)
         .add_system(fps_update_system)
-        // .add_system(cube_add)
+        .add_system(mouse_button_events)
+        .add_system(fixed.in_schedule(CoreSchedule::FixedUpdate))
+        .insert_resource(FixedTime::new_from_secs(1.0))
         .run();
 }
 
@@ -34,13 +34,6 @@ fn setup(
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         ..default()
     });
-    // cube
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        ..default()
-    });
     // light
     commands.spawn(PointLightBundle {
         point_light: PointLight {
@@ -51,7 +44,6 @@ fn setup(
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
         ..default()
     });
-    // camera
 
     fps_add(commands, asset_server)
 }
@@ -97,20 +89,53 @@ fn fps_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, 
     }
 }
 
-fn cube_add(
+#[derive(Bundle)]
+struct Block {
+    data: PbrBundle,
+}
+
+fn fixed() {
+    println!("running fixed system")
+}
+
+fn mouse_button_events(
+    windows: Query<&mut Window>,
+    mut mousebtn_evr: EventReader<MouseButtonInput>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut x: Local<f32>,
+    mut state: Local<f32>,
 ) {
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Plane::from_size(5.0).into()),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
-        transform: Transform::from_xyz(*x, 0.0, 0.0),
-        ..default()
-    });
+    use bevy::input::ButtonState;
 
-    println!("added cube to {}", *x);
+    for ev in mousebtn_evr.iter() {
+        match ev.state {
+            ButtonState::Pressed => {
+                if ev.button == MouseButton::Left {
+                    println!("Click.");
 
-    *x += 1.0;
+                    let window = windows.get_single().unwrap();
+                    let cursor = window.cursor_position().unwrap();
+
+                    println!("{:?}", cursor);
+
+                    commands.spawn(Block {
+                        data: PbrBundle {
+                            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+                            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+                            transform: Transform::from_xyz(*state, 0.5, 0.0),
+                            ..default()
+                        },
+                    });
+
+                    *state += 1.0;
+                }
+
+                // println!("Mouse button press: {:?}", ev.button);
+            }
+            ButtonState::Released => {
+                // println!("Mouse button release: {:?}", ev.button);
+            }
+        }
+    }
 }
