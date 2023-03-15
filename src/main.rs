@@ -2,6 +2,11 @@ use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
+use smooth_bevy_cameras::{controllers::fps::FpsCameraPlugin, LookTransformPlugin};
+
+use crate::camera::CameraControllerPlugin;
+
+mod camera;
 
 fn main() {
     println!("Application initializing.");
@@ -10,8 +15,10 @@ fn main() {
 
     app.add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(CameraControllerPlugin)
         .add_startup_system(setup)
         .add_system(fps_update_system)
+        // .add_system(cube_add)
         .run();
 }
 
@@ -45,17 +52,12 @@ fn setup(
         ..default()
     });
     // camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
 
     fps_add(commands, asset_server)
 }
 
 #[derive(Component)]
 struct FpsText;
-
 fn fps_add(mut commands: Commands, asset_server: Res<AssetServer>) {
     // commands.spawn(Camera2dBundle::default());
     // Text with one section
@@ -93,4 +95,22 @@ fn fps_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, 
             }
         }
     }
+}
+
+fn cube_add(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut x: Local<f32>,
+) {
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(shape::Plane::from_size(5.0).into()),
+        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        transform: Transform::from_xyz(*x, 0.0, 0.0),
+        ..default()
+    });
+
+    println!("added cube to {}", *x);
+
+    *x += 1.0;
 }
