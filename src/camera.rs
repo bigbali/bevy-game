@@ -11,7 +11,6 @@ impl Plugin for CameraControllerPlugin {
         app.add_plugin(LookTransformPlugin)
             .add_plugin(FpsCameraPlugin::default())
             .add_startup_system(create_camera_system);
-        // .add_system(move_camera_system);
     }
 }
 
@@ -30,10 +29,3 @@ fn create_camera_system(mut commands: Commands) {
             Vec3::Y,
         ));
 }
-
-// fn move_camera_system(mut cameras: Query<&mut LookTransform>) {
-//     // Later, another system will update the `Transform` and apply smoothing automatically.
-//     for mut c in cameras.iter_mut() {
-//         c.target += Vec3::new(0.0, 0.0, 0.0);
-//     }
-// }

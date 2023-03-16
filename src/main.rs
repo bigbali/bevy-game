@@ -1,4 +1,4 @@
-use bevy::{input::mouse::MouseButtonInput, prelude::*, window::PrimaryWindow};
+use bevy::{input::mouse::MouseButtonInput, prelude::*, window::CursorGrabMode};
 use bevy_rapier3d::prelude::*;
 
 mod camera;
@@ -16,8 +16,6 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup)
         .add_startup_system(print_resources)
-        .add_startup_system(setup_physics)
-        // .add_system(fps_update_system)
         .add_system(mouse_button_events)
         .add_system(cursor_grab_system)
         .add_system(fixed.in_schedule(CoreSchedule::FixedUpdate))
@@ -153,70 +151,18 @@ fn print_resources(world: &World) {
 }
 
 // TODO capture cursor in screen and dont let it get out
-fn cursor_grab_system(
-    mut windows: Query<&mut Window>,
-    btn: Res<Input<MouseButton>>,
-    key: Res<Input<KeyCode>>,
-) {
-    // let window = windows.get_single().unwrap();
-    // let mut cursor = window.cursor;
+fn cursor_grab_system(mut windows: Query<&mut Window>, key: Res<Input<KeyCode>>) {
+    let mut window = windows.get_single_mut().unwrap();
 
     if key.just_pressed(KeyCode::LControl) {
-        // if you want to use the cursor, but not let it leave the window,
-        // use `Confined` mode:
-        // cursor.set_cursor_grab_mode(CursorGrabMode::Confined);
+        window.cursor.grab_mode = CursorGrabMode::Locked;
+        window.cursor.visible = false;
 
-        println!("{:?}", PrimaryWindow);
         println!("locking cursor");
     }
 
     if key.just_pressed(KeyCode::Escape) {
-        // window.set_cursor_grab_mode(CursorGrabMode::None);
-        // window.set_cursor_visibility(true);
+        window.cursor.grab_mode = CursorGrabMode::None;
+        window.cursor.visible = true;
     }
-}
-
-pub fn setup_physics(mut commands: Commands) {
-    /*
-     * Ground
-     */
-    let ground_size = 200.1;
-    let ground_height = 0.1;
-
-    commands.spawn((
-        TransformBundle::from(Transform::from_xyz(0.0, -ground_height, 0.0)),
-        Collider::cuboid(ground_size, ground_height, ground_size),
-    ));
-
-    /*
-     * Create the cubes
-     */
-    // let num = 8;
-    // let rad = 1.0;
-
-    // let shift = rad * 2.0 + rad;
-    // let centerx = shift * (num / 2) as f32;
-    // let centery = shift / 2.0;
-    // let centerz = shift * (num / 2) as f32;
-
-    // let mut offset = -(num as f32) * (rad * 2.0 + rad) * 0.5;
-
-    // for j in 0usize..20 {
-    //     for i in 0..num {
-    //         for k in 0usize..num {
-    //             let x = i as f32 * shift - centerx + offset;
-    //             let y = j as f32 * shift + centery + 3.0;
-    //             let z = k as f32 * shift - centerz + offset;
-
-    //             // Build the rigid body.
-    //             commands.spawn((
-    //                 TransformBundle::from(Transform::from_xyz(x, y, z)),
-    //                 RigidBody::Dynamic,
-    //                 Collider::cuboid(rad, rad, rad),
-    //             ));
-    //         }
-    //     }
-
-    //     offset -= 0.05 * rad * (num as f32 - 1.0);
-    // }
 }
