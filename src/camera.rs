@@ -1,8 +1,7 @@
 use bevy::prelude::*;
-// use bevy_mod_picking::PickingCameraBundle;
 use smooth_bevy_cameras::{
     controllers::fps::{FpsCameraBundle, FpsCameraController, FpsCameraPlugin},
-    LookTransform, LookTransformPlugin,
+    LookTransformPlugin,
 };
 
 pub struct CameraControllerPlugin;
