@@ -59,7 +59,7 @@ fn spawn_block(
 
         let transform = Transform::from_translation(position);
 
-        let cube_entity = commands
+        let block_entity = commands
             .spawn(PbrBundle {
                 mesh: mesh_handle.clone(),
                 material,
@@ -70,7 +70,7 @@ fn spawn_block(
             .insert(ColliderDebugColor(Color::VIOLET))
             .id();
 
-        previously_highlighted.entity = Some(cube_entity);
+        previously_highlighted.entity = Some(block_entity);
     }
 }
 
@@ -81,42 +81,22 @@ fn block_highlight_receive(
     mut previously_highlighted: ResMut<BlockHighlightEventPrevious>,
 ) {
     for event in highlight_block.iter() {
-        // if previously_highlighted.entity.is_some() && previously_highlighted.material.is_some() {
-        //     if event.entity != previously_highlighted.entity.unwrap() {
-        //         // should change back the material of the previously highlighted block to the previous material
-        //         *color
-        //             .get_mut(previously_highlighted.entity.unwrap())
-        //             .unwrap() = previously_highlighted.material.as_mut().unwrap().clone();
+        if let Some(entity) = previously_highlighted.entity {
+            // reset the material for the previously highlighted block
+            if let Some(mut prev_color) = color.get_mut(entity).ok() {
+                *prev_color = previously_highlighted.material.as_mut().unwrap().clone();
+                // println!("resetting prev")
+            }
 
-        //         println!(
-        //             "prev material {:?} \n current material {:?}",
-        //             previously_highlighted.material.as_mut().unwrap(),
-        //             color.get(event.entity).unwrap()
-        //         );
-        //     }
-        // }
-
-        // // update the previously highlighted block to be the current one
-        // previously_highlighted.material = Some(color.get(event.entity).unwrap().clone());
-        // previously_highlighted.entity = Some(event.entity);
-
-        // // change the color of the currently highlighted material
-        // *color.get_mut(event.entity).unwrap() = materials.add(Color::GREEN.into());
-        if let Some(prev_entity) = previously_highlighted.entity {
-            if let Some(prev_material) = previously_highlighted.material.as_mut() {
-                if prev_entity != event.entity {
-                    // reset the material of the previously highlighted block
-                    if let Some(mut prev_color) = color.get_mut(prev_entity).ok() {
-                        *prev_color = prev_material.clone();
-                    }
-                }
+            if entity != event.entity {
+                println!("aiming at new entity")
             }
         }
+
         // update the previously highlighted block to be the current one
-        previously_highlighted.material = color.get(event.entity).ok().map(|h| h.clone());
+        previously_highlighted.material = Some(color.get(event.entity).unwrap().clone());
         previously_highlighted.entity = Some(event.entity);
 
-        // change the color of the currently highlighted material
         if let Some(mut current_color) = color.get_mut(event.entity).ok() {
             *current_color = materials.add(Color::GREEN.into());
         }
@@ -165,6 +145,7 @@ fn mouse_button_events(
     rapier_context: Res<RapierContext>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera>>,
     mut writer: EventWriter<BlockSpawnEvent>,
+    mut previously_highlighted: ResMut<BlockHighlightEventPrevious>,
 ) {
     use bevy::input::ButtonState;
 
@@ -193,7 +174,6 @@ fn mouse_button_events(
                     ) {
                         let hit_point = intersection.point;
                         let hit_normal = intersection.normal;
-                        println!("Entity {:?} hit at point {:?}", entity, intersection);
 
                         let color = Color::GREEN;
                         commands.entity(entity).insert(ColliderDebugColor(color));
@@ -211,29 +191,7 @@ fn mouse_button_events(
                             color: Color::YELLOW,
                             entity,
                         });
-
-                        // commands.spawn(Block {
-                        //     render: PbrBundle {
-                        //         mesh: block,
-                        //         material: materials.add(Color::rgb(0.9, 1.0, 1.0).into()),
-                        //         transform: Transform::from_xyz(
-                        //             hit_point.x + hit_normal.x,
-                        //             hit_point.y + hit_normal.y,
-                        //             hit_point.z + hit_normal.z,
-                        //         ),
-                        //         ..default()
-                        //     },
-                        //     collider: Collider::from_bevy_mesh(
-                        //         &mesh,
-                        //         &ComputedColliderShape::TriMesh,
-                        //     )
-                        //     .unwrap(),
-                        // });
                     }
-
-                    // block::Block::create(block::BlockType::Stone);
-
-                    *state += 1.0;
                 }
                 if ev.button == MouseButton::Right {
                     for x in -5..5 {
@@ -260,12 +218,8 @@ fn mouse_button_events(
                         }
                     }
                 }
-
-                // println!("Mouse button press: {:?}", ev.button);
             }
-            ButtonState::Released => {
-                // println!("Mouse button release: {:?}", ev.button);
-            }
+            ButtonState::Released => {}
         }
     }
 }
