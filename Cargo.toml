@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.10.0", features = ["dynamic_linking"] }
-bevy_rapier3d = "0.21.0"
+bevy_rapier3d = { version = "0.21.0", features = [ "simd-stable", "debug-render-3d" ] }
 smooth-bevy-cameras = "0.8.0"
 
 # Enable a small amount of optimization in debug mode
