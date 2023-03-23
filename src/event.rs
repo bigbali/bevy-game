@@ -1,25 +1,32 @@
+use bevy_mod_outline::*;
+
 use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion},
     prelude::*,
 };
 use bevy_rapier3d::{prelude::*, render::ColliderDebugColor};
 
-use crate::Block;
+use crate::block::*;
 
 pub struct EventSystemPlugin;
 
 impl Plugin for EventSystemPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<BlockHighlightEvent>()
+        app.add_event::<HighlightBlock>()
+            .add_event::<RemoveBlockHighlight>()
             .add_event::<BlockSpawnEvent>()
+            .add_plugin(OutlinePlugin)
+            .insert_resource(Msaa::Sample4)
             .add_system(spawn_block)
-            .add_system(block_highlight_send)
-            .add_system(block_highlight_receive)
+            .add_system(highlight_block_at_crosshair)
+            .add_system(highlight_block)
             .add_system(mouse_button_events)
+            .add_system(spawn_block.run_if(resource_exists::<BlockMaterialStore>()))
             .insert_resource(BlockHighlightEventPrevious::default());
     }
 }
 
+#[allow(dead_code)]
 struct BlockSpawnEvent {
     entity: Entity,
     position: Vec3,
@@ -27,10 +34,15 @@ struct BlockSpawnEvent {
 }
 
 #[derive(Debug)]
-struct BlockHighlightEvent {
+#[allow(dead_code)]
+pub struct HighlightBlock {
     entity: Entity,
     intersection: RayIntersection,
 }
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct RemoveBlockHighlight;
 
 #[derive(Resource, Default, Debug)]
 struct BlockHighlightEventPrevious {
@@ -38,78 +50,79 @@ struct BlockHighlightEventPrevious {
     material: Option<Handle<StandardMaterial>>,
 }
 
+#[derive(Resource, Default, Debug)]
+struct HighlightedBlock {
+    entity: Option<Entity>,
+}
+
+// TODO some blocks might prefer to stay in the shadows!
+#[derive(Component)]
+pub struct Highlightable;
+
 fn spawn_block(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut spawn_block: EventReader<BlockSpawnEvent>,
-    mut previously_highlighted: ResMut<BlockHighlightEventPrevious>,
+    material_store: ResMut<BlockMaterialStore>,
 ) {
     for spawn in spawn_block.iter() {
-        let color = spawn.color;
         let position = spawn.position;
 
-        let mesh = Mesh::from(shape::Cube { size: 1.0 });
-        let mesh_handle = meshes.add(mesh);
-
-        let material = materials.add(StandardMaterial {
-            base_color: color,
-            ..Default::default()
-        });
-
-        let transform = Transform::from_translation(position);
-
-        let block_entity = commands
-            .spawn(PbrBundle {
-                mesh: mesh_handle.clone(),
-                material,
-                transform,
-                ..Default::default()
-            })
-            .insert(Collider::cuboid(0.5, 0.5, 0.5))
-            .insert(ColliderDebugColor(Color::VIOLET))
-            .id();
-
-        previously_highlighted.entity = Some(block_entity);
+        BlockTest::create(
+            BlockType::Stone,
+            &material_store,
+            &mut commands,
+            &mut meshes,
+            position,
+        );
     }
 }
 
-fn block_highlight_receive(
-    mut highlight_block: EventReader<BlockHighlightEvent>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut color: Query<&mut Handle<StandardMaterial>>,
+// TODO surely we can do better
+fn highlight_block(
+    mut remove_block_highlight: EventReader<RemoveBlockHighlight>,
+    mut highlight_block: EventReader<HighlightBlock>,
     mut previously_highlighted: ResMut<BlockHighlightEventPrevious>,
+    mut commands: Commands,
 ) {
-    for event in highlight_block.iter() {
-        if let Some(entity) = previously_highlighted.entity {
-            // reset the material for the previously highlighted block
-            if let Some(mut prev_color) = color.get_mut(entity).ok() {
-                *prev_color = previously_highlighted.material.as_mut().unwrap().clone();
-                // println!("resetting prev")
-            }
+    for _ in remove_block_highlight.iter() {
+        if let Some(previous_entity) = previously_highlighted.entity {
+            commands.entity(previous_entity).remove::<OutlineBundle>();
+        }
+    }
 
-            if entity != event.entity {
-                println!("aiming at new entity")
-            }
+    for highlight_event in highlight_block.iter() {
+        if let Some(previous_entity) = previously_highlighted.entity {
+            commands.entity(previous_entity).remove::<OutlineBundle>();
         }
 
-        // update the previously highlighted block to be the current one
-        previously_highlighted.material = Some(color.get(event.entity).unwrap().clone());
-        previously_highlighted.entity = Some(event.entity);
+        commands
+            .entity(highlight_event.entity)
+            .remove::<OutlineBundle>();
 
-        if let Some(mut current_color) = color.get_mut(event.entity).ok() {
-            *current_color = materials.add(Color::GREEN.into());
-        }
+        commands
+            .entity(highlight_event.entity)
+            .insert(OutlineBundle {
+                outline: OutlineVolume {
+                    visible: true,
+                    colour: Color::rgba(0.8, 0.4, 0.8, 1.0),
+                    width: 2.0,
+                },
+                ..default()
+            });
+
+        previously_highlighted.entity = Some(highlight_event.entity);
     }
 }
 
-fn block_highlight_send(
+/// Triggers a BlockHighlightEvent.
+pub fn highlight_block_at_crosshair(
     windows: Query<&mut Window>,
     rapier_context: Res<RapierContext>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera>>,
-    color: Query<&Handle<StandardMaterial>>,
-    mut highlight_block: EventWriter<BlockHighlightEvent>,
-    mut previously_highlighted: ResMut<BlockHighlightEventPrevious>,
+    mut highlight_block: EventWriter<HighlightBlock>,
+    mut remove_block_highlight: EventWriter<RemoveBlockHighlight>,
     _: EventReader<MouseMotion>,
 ) {
     let (camera, camera_transform) = camera_query.single();
@@ -128,28 +141,28 @@ fn block_highlight_send(
         true,
         QueryFilter::new(),
     ) {
-        highlight_block.send(BlockHighlightEvent {
+        highlight_block.send(HighlightBlock {
             entity,
             intersection,
         });
+    } else {
+        remove_block_highlight.send(RemoveBlockHighlight);
     }
 }
 
 fn mouse_button_events(
     windows: Query<&mut Window>,
-    mut mousebtn_evr: EventReader<MouseButtonInput>,
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut state: Local<f32>,
     rapier_context: Res<RapierContext>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera>>,
-    mut writer: EventWriter<BlockSpawnEvent>,
-    mut previously_highlighted: ResMut<BlockHighlightEventPrevious>,
+    mut commands: Commands,
+    mut mouse_button: EventReader<MouseButtonInput>,
+    mut block_spawn: EventWriter<BlockSpawnEvent>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     use bevy::input::ButtonState;
 
-    for ev in mousebtn_evr.iter() {
+    for ev in mouse_button.iter() {
         match ev.state {
             ButtonState::Pressed => {
                 if ev.button == MouseButton::Left {
@@ -175,45 +188,51 @@ fn mouse_button_events(
                         let hit_point = intersection.point;
                         let hit_normal = intersection.normal;
 
-                        let color = Color::GREEN;
-                        commands.entity(entity).insert(ColliderDebugColor(color));
+                        commands
+                            .entity(entity)
+                            .insert(ColliderDebugColor(Color::GREEN));
 
-                        // MaterialMeshBundle
-                        let mesh = Mesh::from(shape::Cube { size: 1.0 });
-                        let block = meshes.add(mesh.clone());
-
-                        writer.send(BlockSpawnEvent {
-                            position: Vec3 {
-                                x: hit_point.x + hit_normal.x,
-                                y: hit_point.y + hit_normal.y,
-                                z: hit_point.z + hit_normal.z,
-                            },
+                        block_spawn.send(BlockSpawnEvent {
+                            position: (hit_point + hit_normal).floor(),
+                            // position: Vec3 {
+                            //     x: hit_point.x + hit_normal.x,
+                            //     y: hit_point.y + hit_normal.y,
+                            //     z: hit_point.z + hit_normal.z,
+                            // },
+                            // position: Vec3 {
+                            //     x: hit_point.x - hit_normal.x * 0.5 - 1.0 * 0.5,
+                            //     y: hit_point.y - hit_normal.y * 0.5 - 1.0 * 0.5,
+                            //     z: hit_point.z - hit_normal.z * 0.5 - 1.0 * 0.5,
+                            // },
                             color: Color::YELLOW,
                             entity,
                         });
                     }
                 }
+
                 if ev.button == MouseButton::Right {
                     for x in -5..5 {
                         for y in -5..5 {
                             for z in -5..5 {
                                 let mesh = Mesh::from(shape::Cube { size: 1.0 });
                                 let block = meshes.add(mesh.clone());
-                                commands.spawn(Block {
-                                    render: PbrBundle {
+
+                                commands
+                                    .spawn(PbrBundle {
                                         mesh: block,
                                         material: materials.add(Color::rgb(0.9, 1.0, 1.0).into()),
                                         transform: Transform::from_xyz(
                                             x as f32, y as f32, z as f32,
                                         ),
                                         ..default()
-                                    },
-                                    collider: Collider::from_bevy_mesh(
-                                        &mesh,
-                                        &ComputedColliderShape::TriMesh,
-                                    )
-                                    .unwrap(),
-                                });
+                                    })
+                                    .insert(
+                                        Collider::from_bevy_mesh(
+                                            &mesh,
+                                            &ComputedColliderShape::TriMesh,
+                                        )
+                                        .unwrap(),
+                                    );
                             }
                         }
                     }

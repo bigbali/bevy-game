@@ -9,8 +9,11 @@ use bevy::{
 };
 use bevy_rapier3d::prelude::*;
 
-// mod block;
+use crate::block::BlockPlugin;
+
+mod block;
 mod camera;
+// mod chunk;
 mod event;
 mod ui;
 mod util;
@@ -24,13 +27,14 @@ fn main() {
         .add_plugin(camera::CameraControllerPlugin)
         .add_plugin(ui::UserInterfacePlugin)
         .add_plugin(event::EventSystemPlugin)
+        .add_plugin(BlockPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(RapierDebugRenderPlugin {
-            always_on_top: true,
-            enabled: true,
-            mode: DebugRenderMode::COLLIDER_SHAPES,
-            ..default()
-        })
+        // .add_plugin(RapierDebugRenderPlugin {
+        //     always_on_top: true,
+        //     enabled: true,
+        //     mode: DebugRenderMode::COLLIDER_SHAPES,
+        //     ..default()
+        // })
         .add_startup_system(setup)
         .add_startup_system(print_resources)
         // .add_system(mouse_button_events)
@@ -41,6 +45,7 @@ fn main() {
         .add_event::<SB>()
         .add_event::<BlockHighlightEvent>()
         .insert_resource(FixedTime::new_from_secs(5.0))
+        .insert_resource(ClearColor(Color::BLACK))
         .run();
 }
 
@@ -134,8 +139,8 @@ fn build_voxel_block(
                 transform,
                 ..Default::default()
             })
-            .insert(Collider::cuboid(0.5, 0.5, 0.5))
-            .insert(ColliderDebugColor(Color::VIOLET));
+            .insert(Collider::cuboid(0.5, 0.5, 0.5));
+        // .insert(ColliderDebugColor(Color::VIOLET));
     }
 }
 
