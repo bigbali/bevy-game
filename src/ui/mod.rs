@@ -46,21 +46,32 @@ fn initialize_fps_counter_system(mut commands: Commands, asset_server: Res<Asset
 }
 
 fn initialize_crosshair(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(ImageBundle {
-        image: UiImage {
-            texture: asset_server.load("image/crosshair.png"),
-            ..default()
-        },
-        style: Style {
-            margin: UiRect::all(Val::Auto),
-            size: Size {
-                width: Val::Px(5.0),
-                height: Val::Px(5.0),
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                position_type: PositionType::Absolute,
+                size: Size::all(Val::Percent(100.0)),
+                ..default()
             },
             ..default()
-        },
-        ..default()
-    });
+        })
+        .with_children(|container| {
+            container.spawn(ImageBundle {
+                image: UiImage {
+                    texture: asset_server.load("image/crosshair.png"),
+                    ..default()
+                },
+                style: Style {
+                    margin: UiRect::all(Val::Auto),
+                    size: Size {
+                        width: Val::Px(5.0),
+                        height: Val::Px(5.0),
+                    },
+                    ..default()
+                },
+                ..default()
+            });
+        });
 }
 
 fn ui_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
