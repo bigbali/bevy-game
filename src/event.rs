@@ -1,10 +1,14 @@
 use bevy_mod_outline::*;
 
 use bevy::{
-    input::mouse::{MouseButtonInput, MouseMotion},
+    input::{
+        keyboard::KeyboardInput,
+        mouse::{MouseButtonInput, MouseMotion},
+        ButtonState,
+    },
     prelude::*,
 };
-use bevy_rapier3d::{prelude::*, render::ColliderDebugColor};
+use bevy_rapier3d::{prelude::*, rapier::crossbeam::channel::Select, render::ColliderDebugColor};
 
 use crate::block::*;
 
@@ -15,9 +19,11 @@ impl Plugin for EventSystemPlugin {
         app.add_event::<HighlightBlock>()
             .add_event::<RemoveBlockHighlight>()
             .add_event::<BlockSpawnEvent>()
+            .add_event::<SelectBlockEvent>()
             .add_plugin(OutlinePlugin)
             .insert_resource(Msaa::Sample4)
             .add_system(spawn_block)
+            .add_system(select_block_to_spawn)
             .add_system(highlight_block_at_crosshair)
             .add_system(highlight_block)
             .add_system(mouse_button_events)
@@ -26,8 +32,11 @@ impl Plugin for EventSystemPlugin {
     }
 }
 
+#[derive(Debug)]
+pub struct SelectBlockEvent(pub BlockType);
+
 #[allow(dead_code)]
-struct BlockSpawnEvent {
+pub struct BlockSpawnEvent {
     entity: Entity,
     position: Vec3,
     color: Color,
@@ -59,18 +68,43 @@ struct HighlightedBlock {
 #[derive(Component)]
 pub struct Highlightable;
 
+fn select_block_to_spawn(
+    mut input: EventReader<KeyboardInput>,
+    mut select_block: EventWriter<SelectBlockEvent>,
+) {
+    for event in input.iter() {
+        match event.state {
+            ButtonState::Pressed => {
+                match event.key_code {
+                    Some(code) => match code {
+                        KeyCode::Key1 => select_block.send(SelectBlockEvent(BlockType::Stone)),
+                        KeyCode::Key2 => select_block.send(SelectBlockEvent(BlockType::Soil)),
+                        KeyCode::Key3 => select_block.send(SelectBlockEvent(BlockType::Grass)),
+                        _ => {}
+                    },
+                    None => {}
+                }
+                // println!("Key press: {:?} ({})", ev.key_code, ev.scan_code);
+            }
+            ButtonState::Released => {}
+        }
+    }
+}
+
 fn spawn_block(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut spawn_block: EventReader<BlockSpawnEvent>,
     material_store: ResMut<BlockMaterialStore>,
+    selected_block: Res<SelectedBlock>,
 ) {
     for spawn in spawn_block.iter() {
         let position = spawn.position;
+        // selected_block.
 
-        BlockTest::create(
-            BlockType::Stone,
+        Block::create(
+            selected_block.0,
             &material_store,
             &mut commands,
             &mut meshes,
@@ -193,6 +227,7 @@ fn mouse_button_events(
                             .insert(ColliderDebugColor(Color::GREEN));
 
                         block_spawn.send(BlockSpawnEvent {
+                            // while flooring the value guarantees axis-aligned placement, it does not necessarily guarantee correct axis :]
                             position: (hit_point + hit_normal).floor(),
                             // position: Vec3 {
                             //     x: hit_point.x + hit_normal.x,

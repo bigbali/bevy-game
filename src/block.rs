@@ -1,99 +1,16 @@
 use bevy::prelude::*;
-
-// #[derive(Debug)]
-// pub enum BlockType {
-//     Stone,
-//     Soil,
-//     Grass,
-//     MIX,
-// }
-
-// #[derive(Default, Clone, Debug)]
-// pub enum VoxelType {
-//     #[default]
-//     Stone,
-//     Soil,
-//     Grass,
-// }
-
-// #[derive(Default, Clone, Debug)]
-// pub struct Voxel {
-//     position: Vec3,
-//     voxel_type: VoxelType,
-// }
-
-// #[derive(Debug)]
-// pub struct Block {
-//     position: Vec3,
-//     block_type: BlockType,
-//     voxel_data: Vec<Voxel>,
-// }
-
-// impl Block {
-//     pub fn create(block_type: BlockType) -> Block {
-//         match block_type {
-//             BlockType::Stone => StoneBlock::create(),
-//             _ => {
-//                 println!(
-//                     "Function 'create' for block of type {:?} is not implemented.",
-//                     block_type
-//                 );
-
-//                 return StoneBlock::create();
-//             }
-//         }
-//     }
-// }
-
-// pub struct StoneBlock {}
-
-// fn fill_voxels() -> Vec<Voxel> {
-//     let mut vdata = Vec::with_capacity(32 * 32 * 32);
-//     for x in 0..32 {
-//         for y in 0..32 {
-//             for z in 0..32 {
-//                 vdata.push(Voxel {
-//                     position: Vec3 {
-//                         x: x as f32,
-//                         y: y as f32,
-//                         z: z as f32,
-//                     },
-//                     voxel_type: VoxelType::Stone,
-//                 });
-//             }
-//         }
-//     }
-
-//     return vdata;
-// }
-
-// impl StoneBlock {
-//     fn create() -> Block {
-//         let block = Block {
-//             position: Vec3 {
-//                 x: 0.0,
-//                 y: 0.0,
-//                 z: 0.0,
-//             },
-//             block_type: BlockType::Stone,
-//             voxel_data: fill_voxels(),
-//         };
-
-//         println!("Created block {:?}", block);
-
-//         return block;
-//     }
-// }
-
-use bevy::prelude::StandardMaterial;
 use bevy::utils::HashMap;
 use bevy_rapier3d::prelude::Collider;
+
+use crate::event::*;
 
 pub struct BlockPlugin;
 
 impl Plugin for BlockPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_resources);
+        app.add_startup_system(setup_resources)
+            .add_system(select_block)
+            .insert_resource(SelectedBlock(BlockType::Stone));
     }
 }
 
@@ -101,7 +18,18 @@ fn setup_resources(mut commands: Commands, materials: ResMut<Assets<StandardMate
     commands.insert_resource(BlockMaterialStore::new(materials))
 }
 
-#[derive(Debug, Default, Eq, Hash, PartialEq, Component)]
+pub fn select_block(
+    mut select_block: EventReader<SelectBlockEvent>,
+    mut selected_block: ResMut<SelectedBlock>,
+) {
+    for select_block_event in select_block.iter() {
+        selected_block.0 = select_block_event.0;
+        println!("event: {:?}", select_block_event);
+        println!("selected: {:?}", selected_block);
+    }
+}
+
+#[derive(Debug, Default, Eq, Hash, PartialEq, Component, Copy, Clone)]
 pub enum BlockType {
     #[default]
     Stone,
@@ -110,14 +38,8 @@ pub enum BlockType {
     MIXED,
 }
 
-// #[derive(Resource)]
-// pub struct BlockMesh(Handle<Mesh>);
-
-// impl BlockMesh {
-//     pub fn new(mut meshes_resource: ResMut<Assets<Mesh>>) -> Handle<Mesh> {
-//         meshes_resource.add(Mesh::from(shape::Cube { size: 1.0 }))
-//     }
-// }
+#[derive(Resource, Default, Debug)]
+pub struct SelectedBlock(pub BlockType);
 
 #[derive(Resource)]
 pub struct BlockMaterialStore {
@@ -168,14 +90,14 @@ impl BlockMaterialStore {
 pub struct BlockPositionInChunk(Vec3);
 
 #[derive(Bundle)]
-pub struct BlockTest {
+pub struct Block {
     render: PbrBundle,
     // position_in_chunk: BlockPositionInChunk,
     block_type: BlockType,
     collider: Collider,
 }
 
-impl BlockTest {
+impl Block {
     pub fn create(
         block_type: BlockType,
         material_store: &ResMut<BlockMaterialStore>,
@@ -196,7 +118,7 @@ impl BlockTest {
                 let material = material_store.data.get(&block_type).unwrap();
 
                 let entity = commands
-                    .spawn(BlockTest {
+                    .spawn(Block {
                         block_type,
                         render: PbrBundle {
                             material: material.clone(),
