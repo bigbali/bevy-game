@@ -8,14 +8,18 @@ pub struct BlockPlugin;
 
 impl Plugin for BlockPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_resources)
-            .add_system(select_block)
+        let mut standard_material_assets = app
+            .world
+            .get_resource_mut::<Assets<StandardMaterial>>()
+            .unwrap();
+
+        let block_material_store = BlockMaterialStore::new(&mut standard_material_assets);
+
+        app.add_system(select_block)
+            .insert_resource(BlockType::default())
+            .insert_resource(block_material_store)
             .insert_resource(SelectedBlock(BlockType::Stone));
     }
-}
-
-fn setup_resources(mut commands: Commands, materials: ResMut<Assets<StandardMaterial>>) {
-    commands.insert_resource(BlockMaterialStore::new(materials))
 }
 
 pub fn select_block(
@@ -24,12 +28,11 @@ pub fn select_block(
 ) {
     for select_block_event in select_block.iter() {
         selected_block.0 = select_block_event.0;
-        println!("event: {:?}", select_block_event);
-        println!("selected: {:?}", selected_block);
+        println!("Selected block: {:?}", selected_block);
     }
 }
 
-#[derive(Debug, Default, Eq, Hash, PartialEq, Component, Copy, Clone)]
+#[derive(Debug, Default, Eq, Hash, PartialEq, Copy, Clone, Resource, Component)]
 pub enum BlockType {
     #[default]
     Stone,
@@ -41,13 +44,13 @@ pub enum BlockType {
 #[derive(Resource, Default, Debug)]
 pub struct SelectedBlock(pub BlockType);
 
-#[derive(Resource)]
+#[derive(Resource, Debug)]
 pub struct BlockMaterialStore {
-    data: HashMap<BlockType, Handle<StandardMaterial>>,
+    pub data: HashMap<BlockType, Handle<StandardMaterial>>,
 }
 
 impl BlockMaterialStore {
-    pub fn new(mut materials_resource: ResMut<Assets<StandardMaterial>>) -> Self {
+    pub fn new(materials_resource: &mut Assets<StandardMaterial>) -> Self {
         let mut materials = HashMap::new();
         materials.insert(
             BlockType::Stone,

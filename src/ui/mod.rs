@@ -3,18 +3,18 @@ use bevy::{
     prelude::*,
 };
 
-use self::inventory::initialize_inventory_overlay;
+use self::inventory::*;
 
-mod inventory;
+pub mod inventory;
 
 pub struct UserInterfacePlugin;
 
 impl Plugin for UserInterfacePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(FrameTimeDiagnosticsPlugin::default())
+            .add_plugin(InventorySystemPlugin)
             .add_startup_system(initialize_fps_counter_system)
             .add_startup_system(initialize_crosshair)
-            .add_startup_system(initialize_inventory_overlay)
             .add_system(ui_update_system);
     }
 }

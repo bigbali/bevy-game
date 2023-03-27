@@ -8,9 +8,9 @@ use bevy::{
     },
     prelude::*,
 };
-use bevy_rapier3d::{prelude::*, rapier::crossbeam::channel::Select, render::ColliderDebugColor};
+use bevy_rapier3d::{prelude::*, render::ColliderDebugColor};
 
-use crate::block::*;
+use crate::{block::*, ui::inventory::SelectInventorySlotEvent};
 
 pub struct EventSystemPlugin;
 
@@ -71,21 +71,28 @@ pub struct Highlightable;
 fn select_block_to_spawn(
     mut input: EventReader<KeyboardInput>,
     mut select_block: EventWriter<SelectBlockEvent>,
+    mut select_inv: EventWriter<SelectInventorySlotEvent>,
 ) {
     for event in input.iter() {
         match event.state {
-            ButtonState::Pressed => {
-                match event.key_code {
-                    Some(code) => match code {
-                        KeyCode::Key1 => select_block.send(SelectBlockEvent(BlockType::Stone)),
-                        KeyCode::Key2 => select_block.send(SelectBlockEvent(BlockType::Soil)),
-                        KeyCode::Key3 => select_block.send(SelectBlockEvent(BlockType::Grass)),
-                        _ => {}
-                    },
-                    None => {}
-                }
-                // println!("Key press: {:?} ({})", ev.key_code, ev.scan_code);
-            }
+            ButtonState::Pressed => match event.key_code {
+                Some(code) => match code {
+                    KeyCode::Key1 => {
+                        select_block.send(SelectBlockEvent(BlockType::Stone));
+                        select_inv.send(SelectInventorySlotEvent(0));
+                    }
+                    KeyCode::Key2 => {
+                        select_block.send(SelectBlockEvent(BlockType::Soil));
+                        select_inv.send(SelectInventorySlotEvent(1));
+                    }
+                    KeyCode::Key3 => {
+                        select_block.send(SelectBlockEvent(BlockType::Grass));
+                        select_inv.send(SelectInventorySlotEvent(2));
+                    }
+                    _ => {}
+                },
+                None => {}
+            },
             ButtonState::Released => {}
         }
     }

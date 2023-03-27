@@ -7,6 +7,7 @@ use bevy::{
     prelude::*,
     window::CursorGrabMode,
 };
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 
 use crate::block::BlockPlugin;
@@ -24,6 +25,7 @@ fn main() {
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins)
+        .add_plugin(WorldInspectorPlugin::default())
         .add_plugin(camera::CameraControllerPlugin)
         .add_plugin(ui::UserInterfacePlugin)
         .add_plugin(event::EventSystemPlugin)

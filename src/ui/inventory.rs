@@ -1,8 +1,72 @@
 use bevy::prelude::*;
 
-const INVENTORY_OVERLAY_SLOTS: u8 = 9;
+use crate::block::{BlockMaterialStore, BlockType};
 
-pub fn initialize_inventory_overlay(mut commands: Commands, asset_server: Res<AssetServer>) {
+const INVENTORY_OVERLAY_SLOTS: usize = 9;
+const SLOT_COLOR: Color = Color::rgb(0.15, 0.15, 0.15);
+const SLOT_SELECTED_COLOR: Color = Color::rgb(0.35, 0.35, 0.35);
+
+pub struct InventorySystemPlugin;
+
+impl Plugin for InventorySystemPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(initialize_inventory_overlay)
+            .add_system(update_inventory_overlay)
+            .add_event::<SelectInventorySlotEvent>()
+            .insert_resource(Inventory::new())
+            .register_type::<Inventory>()
+            .register_type::<Slot>();
+    }
+}
+
+#[derive(Component)]
+struct InventorySlotComponent;
+
+#[derive(Resource, Debug, Reflect, FromReflect, Clone)]
+pub struct Slot {
+    contains: Option<Color>,
+}
+
+impl Slot {
+    pub fn new() -> Self {
+        return Self { contains: None };
+    }
+}
+
+#[derive(Resource, Debug, Reflect, FromReflect, Default)]
+#[reflect(Resource)]
+pub struct Inventory {
+    pub items: Vec<Slot>,
+    pub selected: usize,
+}
+
+impl Inventory {
+    pub fn new() -> Self {
+        return Self {
+            items: vec![Slot::new(); INVENTORY_OVERLAY_SLOTS],
+            selected: 0,
+        };
+    }
+
+    pub fn get_selected(&mut self) -> &mut Slot {
+        return &mut self.items[self.selected];
+    }
+
+    pub fn get_selected_with_index(&mut self) -> (usize, &mut Slot) {
+        return (self.selected, &mut self.items[self.selected]);
+    }
+}
+
+#[derive(Debug)]
+pub struct SelectInventorySlotEvent(pub usize);
+
+pub fn initialize_inventory_overlay(
+    mut commands: Commands,
+    mut inventory: ResMut<Inventory>,
+    block_materials: ResMut<BlockMaterialStore>,
+    asset_server: Res<AssetServer>,
+    materials: Res<Assets<StandardMaterial>>,
+) {
     commands
         // main container
         .spawn(NodeBundle {
@@ -14,13 +78,13 @@ pub fn initialize_inventory_overlay(mut commands: Commands, asset_server: Res<As
             ..default()
         })
         // actual graphical interface
-        .with_children(|screen| {
-            screen
+        .with_children(|container| {
+            container
                 .spawn(NodeBundle {
                     style: Style {
                         size: Size {
-                            width: Val::Px(576.0), // 9 * 60 + 2 * 3 (3: container padding, 60: slot size, 9: slot count)
-                            height: Val::Px(66.0), // 60 + 2 * 3
+                            width: Val::Px(INVENTORY_OVERLAY_SLOTS as f32 * 63.0), // 60 + padding
+                            height: Val::Px(66.0),
                         },
                         padding: UiRect::all(Val::Px(3.0)),
                         margin: UiRect {
@@ -35,8 +99,22 @@ pub fn initialize_inventory_overlay(mut commands: Commands, asset_server: Res<As
                     ..default()
                 })
                 .with_children(|overlay| {
-                    // number the slots 1-9
-                    for slot in 1..INVENTORY_OVERLAY_SLOTS + 1 {
+                    for slot in 0..INVENTORY_OVERLAY_SLOTS {
+                        let x = match slot {
+                            0 => Some(block_materials.data.get(&BlockType::Stone).unwrap()),
+                            1 => Some(block_materials.data.get(&BlockType::Soil).unwrap()),
+                            2 => Some(block_materials.data.get(&BlockType::Grass).unwrap()),
+                            _ => None,
+                        };
+
+                        let mut display_color = Color::rgba(0.0, 0.0, 0.0, 0.0);
+
+                        if let Some(material_handle) = x {
+                            let color = materials.get(material_handle).unwrap().base_color;
+                            inventory.items[slot].contains = Some(color);
+                            display_color = color;
+                        }
+
                         overlay
                             // slot rectangle
                             .spawn(NodeBundle {
@@ -45,14 +123,25 @@ pub fn initialize_inventory_overlay(mut commands: Commands, asset_server: Res<As
                                     margin: UiRect::vertical(Val::Auto),
                                     ..default()
                                 },
-                                background_color: Color::rgb(0.15, 0.15, 0.15).into(),
+                                background_color: SLOT_COLOR.into(),
                                 ..default()
                             })
                             .with_children(|slot_rectangle| {
+                                slot_rectangle.spawn(NodeBundle {
+                                    style: Style {
+                                        margin: UiRect::all(Val::Auto),
+                                        size: Size::all(Val::Px(35.0)),
+                                        position_type: PositionType::Absolute,
+                                        ..default()
+                                    },
+                                    background_color: BackgroundColor::from(display_color),
+                                    ..default()
+                                });
+
                                 // slot numbering
                                 slot_rectangle.spawn(
                                     TextBundle::from_section(
-                                        format!("{}", slot),
+                                        format!("{}", slot + 1),
                                         TextStyle {
                                             font: asset_server.load("font/TiltWarp-Regular.ttf"),
                                             font_size: 14.0,
@@ -64,14 +153,34 @@ pub fn initialize_inventory_overlay(mut commands: Commands, asset_server: Res<As
                                         position_type: PositionType::Absolute,
                                         position: UiRect {
                                             bottom: Val::Px(2.0),
-                                            right: Val::Px(4.0),
+                                            right: Val::Px(6.0),
                                             ..default()
                                         },
                                         ..default()
                                     }),
                                 );
-                            });
+                            })
+                            .insert(InventorySlotComponent);
                     }
+
+                    println!("{:?}", inventory);
                 });
         });
+}
+
+fn update_inventory_overlay(
+    mut query: Query<&mut BackgroundColor, With<InventorySlotComponent>>,
+    mut selected_inventory_slot: EventReader<SelectInventorySlotEvent>,
+) {
+    for event in selected_inventory_slot.iter() {
+        let selected_slot = event.0;
+
+        for (index, mut background_color) in query.iter_mut().enumerate() {
+            if index == selected_slot {
+                background_color.0 = SLOT_SELECTED_COLOR;
+            } else {
+                background_color.0 = SLOT_COLOR;
+            }
+        }
+    }
 }
