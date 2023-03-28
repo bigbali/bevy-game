@@ -123,7 +123,10 @@ pub fn initialize_inventory_overlay(
                                     margin: UiRect::vertical(Val::Auto),
                                     ..default()
                                 },
-                                background_color: SLOT_COLOR.into(),
+                                background_color: match slot {
+                                    0 => SLOT_SELECTED_COLOR.into(),
+                                    _ => SLOT_COLOR.into(),
+                                },
                                 ..default()
                             })
                             .with_children(|slot_rectangle| {

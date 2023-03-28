@@ -101,14 +101,14 @@ fn select_block_to_spawn(
 fn spawn_block(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     mut spawn_block: EventReader<BlockSpawnEvent>,
     material_store: ResMut<BlockMaterialStore>,
     selected_block: Res<SelectedBlock>,
 ) {
     for spawn in spawn_block.iter() {
         let position = spawn.position;
-        // selected_block.
+
+        println!("RECEIVING EVENT");
 
         Block::create(
             selected_block.0,
@@ -118,6 +118,8 @@ fn spawn_block(
             position,
         );
     }
+
+    spawn_block.clear();
 }
 
 // TODO surely we can do better
@@ -199,15 +201,14 @@ fn mouse_button_events(
     mut mouse_button: EventReader<MouseButtonInput>,
     mut block_spawn: EventWriter<BlockSpawnEvent>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    material_store: ResMut<BlockMaterialStore>,
 ) {
-    use bevy::input::ButtonState;
-
     for ev in mouse_button.iter() {
         match ev.state {
             ButtonState::Pressed => {
                 if ev.button == MouseButton::Left {
                     let (camera, camera_transform) = camera_query.single();
+                    println!("SENDING EVENT");
 
                     let window = windows.get_single().unwrap();
                     let window_center = Vec2::new(window.width() / 2.0, window.height() / 2.0);
@@ -236,16 +237,6 @@ fn mouse_button_events(
                         block_spawn.send(BlockSpawnEvent {
                             // while flooring the value guarantees axis-aligned placement, it does not necessarily guarantee correct axis :]
                             position: (hit_point + hit_normal).floor(),
-                            // position: Vec3 {
-                            //     x: hit_point.x + hit_normal.x,
-                            //     y: hit_point.y + hit_normal.y,
-                            //     z: hit_point.z + hit_normal.z,
-                            // },
-                            // position: Vec3 {
-                            //     x: hit_point.x - hit_normal.x * 0.5 - 1.0 * 0.5,
-                            //     y: hit_point.y - hit_normal.y * 0.5 - 1.0 * 0.5,
-                            //     z: hit_point.z - hit_normal.z * 0.5 - 1.0 * 0.5,
-                            // },
                             color: Color::YELLOW,
                             entity,
                         });
@@ -256,25 +247,17 @@ fn mouse_button_events(
                     for x in -5..5 {
                         for y in -5..5 {
                             for z in -5..5 {
-                                let mesh = Mesh::from(shape::Cube { size: 1.0 });
-                                let block = meshes.add(mesh.clone());
-
-                                commands
-                                    .spawn(PbrBundle {
-                                        mesh: block,
-                                        material: materials.add(Color::rgb(0.9, 1.0, 1.0).into()),
-                                        transform: Transform::from_xyz(
-                                            x as f32, y as f32, z as f32,
-                                        ),
-                                        ..default()
-                                    })
-                                    .insert(
-                                        Collider::from_bevy_mesh(
-                                            &mesh,
-                                            &ComputedColliderShape::TriMesh,
-                                        )
-                                        .unwrap(),
-                                    );
+                                Block::create(
+                                    BlockType::Stone,
+                                    &material_store,
+                                    &mut commands,
+                                    &mut meshes,
+                                    Vec3 {
+                                        x: x as f32,
+                                        y: y as f32,
+                                        z: z as f32,
+                                    },
+                                );
                             }
                         }
                     }

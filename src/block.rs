@@ -94,13 +94,16 @@ pub struct BlockPositionInChunk(Vec3);
 
 #[derive(Bundle)]
 pub struct Block {
-    render: PbrBundle,
+    pub render: PbrBundle,
     // position_in_chunk: BlockPositionInChunk,
-    block_type: BlockType,
-    collider: Collider,
+    pub block_type: BlockType,
+    pub collider: Collider,
 }
 
 impl Block {
+    pub fn default() -> Option<Self> {
+        return None;
+    }
     pub fn create(
         block_type: BlockType,
         material_store: &ResMut<BlockMaterialStore>,

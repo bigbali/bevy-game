@@ -10,6 +10,7 @@ bevy = { version = "0.10.0", features = ["dynamic_linking"] }
 bevy-inspector-egui = "0.18.1"
 bevy_mod_outline = "0.4.0"
 bevy_rapier3d = { version = "0.21.0", features = [ "simd-stable", "debug-render-3d" ] }
+noise = "0.8.2"
 smooth-bevy-cameras = "0.8.0"
 
 # Enable a small amount of optimization in debug mode
