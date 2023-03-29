@@ -90,7 +90,7 @@ impl BlockMaterialStore {
 }
 
 #[derive(Component)]
-pub struct BlockPositionInChunk(Vec3);
+pub struct InChunkPosition(IVec3);
 
 #[derive(Bundle)]
 pub struct Block {
@@ -98,12 +98,10 @@ pub struct Block {
     // position_in_chunk: BlockPositionInChunk,
     pub block_type: BlockType,
     pub collider: Collider,
+    pub position: InChunkPosition,
 }
 
 impl Block {
-    pub fn default() -> Option<Self> {
-        return None;
-    }
     pub fn create(
         block_type: BlockType,
         material_store: &ResMut<BlockMaterialStore>,
@@ -133,6 +131,7 @@ impl Block {
                             ..default()
                         },
                         collider: Collider::cuboid(0.5, 0.5, 0.5),
+                        position: InChunkPosition(IVec3::ZERO),
                     })
                     .id();
 
@@ -141,4 +140,9 @@ impl Block {
             }
         }
     }
+}
+
+pub struct BlockTest {
+    pub position: InChunkPosition,
+    pub mesh: Handle<Mesh>,
 }

@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::{pbr::CascadeShadowConfig, prelude::*, window::CursorGrabMode};
+use bevy_aabb_instancing::VertexPullingRenderPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 use chunk::Chunk;
@@ -32,6 +33,7 @@ fn main() {
         //     mode: DebugRenderMode::COLLIDER_SHAPES,
         //     ..default()
         // })
+        .add_plugin(VertexPullingRenderPlugin { outlines: true })
         .add_startup_system(setup)
         .add_startup_system(print_resources)
         .add_startup_system(initialize_example_chunk)

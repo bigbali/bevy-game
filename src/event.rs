@@ -236,7 +236,7 @@ fn mouse_button_events(
 
                         block_spawn.send(BlockSpawnEvent {
                             // while flooring the value guarantees axis-aligned placement, it does not necessarily guarantee correct axis :]
-                            position: (hit_point + hit_normal).floor(),
+                            position: (hit_point + hit_normal).round(),
                             color: Color::YELLOW,
                             entity,
                         });

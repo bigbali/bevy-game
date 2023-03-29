@@ -100,7 +100,7 @@ pub fn initialize_inventory_overlay(
                 })
                 .with_children(|overlay| {
                     for slot in 0..INVENTORY_OVERLAY_SLOTS {
-                        let x = match slot {
+                        let maybe_handle = match slot {
                             0 => Some(block_materials.data.get(&BlockType::Stone).unwrap()),
                             1 => Some(block_materials.data.get(&BlockType::Soil).unwrap()),
                             2 => Some(block_materials.data.get(&BlockType::Grass).unwrap()),
@@ -109,7 +109,7 @@ pub fn initialize_inventory_overlay(
 
                         let mut display_color = Color::rgba(0.0, 0.0, 0.0, 0.0);
 
-                        if let Some(material_handle) = x {
+                        if let Some(material_handle) = maybe_handle {
                             let color = materials.get(material_handle).unwrap().base_color;
                             inventory.items[slot].contains = Some(color);
                             display_color = color;
