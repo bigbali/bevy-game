@@ -5,6 +5,7 @@ use bevy::{
 
 use self::inventory::*;
 
+pub mod debug;
 pub mod inventory;
 
 pub struct UserInterfacePlugin;

@@ -10,7 +10,12 @@ use bevy::{
 };
 use bevy_rapier3d::{prelude::*, render::ColliderDebugColor};
 
-use crate::{block::*, ui::inventory::SelectInventorySlotEvent};
+use crate::{
+    ui::inventory::{SelectInventorySlotEvent, SelectedBlock},
+    world::block::*,
+};
+
+// use crate::{block::*, ui::inventory::SelectInventorySlotEvent};
 
 pub struct EventSystemPlugin;
 
@@ -108,15 +113,15 @@ fn spawn_block(
     for spawn in spawn_block.iter() {
         let position = spawn.position;
 
-        println!("RECEIVING EVENT");
+        println!("EVENT: Spawn Block");
 
-        Block::create(
-            selected_block.0,
-            &material_store,
-            &mut commands,
-            &mut meshes,
-            position,
-        );
+        // Block::create(
+        //     selected_block.0,
+        //     &material_store,
+        //     &mut commands,
+        //     &mut meshes,
+        //     position,
+        // );
     }
 
     spawn_block.clear();
@@ -244,23 +249,24 @@ fn mouse_button_events(
                 }
 
                 if ev.button == MouseButton::Right {
-                    for x in -5..5 {
-                        for y in -5..5 {
-                            for z in -5..5 {
-                                Block::create(
-                                    BlockType::Stone,
-                                    &material_store,
-                                    &mut commands,
-                                    &mut meshes,
-                                    Vec3 {
-                                        x: x as f32,
-                                        y: y as f32,
-                                        z: z as f32,
-                                    },
-                                );
-                            }
-                        }
-                    }
+                    println!("Disabled: Generate Initial Block Entities");
+                    // for x in -5..5 {
+                    //     for y in -5..5 {
+                    //         for z in -5..5 {
+                    //             Block::create(
+                    //                 BlockType::Stone,
+                    //                 &material_store,
+                    //                 &mut commands,
+                    //                 &mut meshes,
+                    //                 Vec3 {
+                    //                     x: x as f32,
+                    //                     y: y as f32,
+                    //                     z: z as f32,
+                    //                 },
+                    //             );
+                    //         }
+                    //     }
+                    // }
                 }
             }
             ButtonState::Released => {}

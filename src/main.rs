@@ -4,16 +4,19 @@ use bevy::{pbr::CascadeShadowConfig, prelude::*, window::CursorGrabMode};
 use bevy_aabb_instancing::VertexPullingRenderPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
-use chunk::Chunk;
+// use chunk::Chunk;
 
-use crate::{block::*, chunk::initialize_example_chunk};
+use crate::world::WorldGenerationPlugin;
 
-mod block;
+// use crate::{block::*, chunk::initialize_example_chunk};
+
+// mod block;
 mod camera;
-mod chunk;
+// mod chunk;
 mod event;
 mod ui;
 mod util;
+mod world;
 
 fn main() {
     println!("Application initializing.");
@@ -25,7 +28,7 @@ fn main() {
         .add_plugin(camera::CameraControllerPlugin)
         .add_plugin(ui::UserInterfacePlugin)
         .add_plugin(event::EventSystemPlugin)
-        .add_plugin(BlockPlugin)
+        .add_plugin(WorldGenerationPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         // .add_plugin(RapierDebugRenderPlugin {
         //     always_on_top: true,
@@ -36,7 +39,7 @@ fn main() {
         .add_plugin(VertexPullingRenderPlugin { outlines: true })
         .add_startup_system(setup)
         .add_startup_system(print_resources)
-        .add_startup_system(initialize_example_chunk)
+        // .add_startup_system(initialize_example_chunk)
         .add_system(cursor_grab_system)
         .add_system(fixed.in_schedule(CoreSchedule::FixedUpdate))
         .insert_resource(FixedTime::new_from_secs(5.0))
@@ -74,7 +77,7 @@ fn setup(
         ..default()
     });
 
-    Chunk::get_some_noise();
+    // Chunk::get_some_noise();
 }
 
 fn fixed() {

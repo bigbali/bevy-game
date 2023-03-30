@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::block::{BlockMaterialStore, BlockType};
+use crate::{
+    event::SelectBlockEvent,
+    world::block::{BlockMaterialStore, BlockType},
+};
 
 const INVENTORY_OVERLAY_SLOTS: usize = 9;
 const SLOT_COLOR: Color = Color::rgb(0.15, 0.15, 0.15);
@@ -12,8 +15,10 @@ impl Plugin for InventorySystemPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(initialize_inventory_overlay)
             .add_system(update_inventory_overlay)
+            .add_system(select_block)
             .add_event::<SelectInventorySlotEvent>()
             .insert_resource(Inventory::new())
+            .insert_resource(SelectedBlock(BlockType::Stone))
             .register_type::<Inventory>()
             .register_type::<Slot>();
     }
@@ -57,10 +62,23 @@ impl Inventory {
     }
 }
 
+#[derive(Resource, Default, Debug)]
+pub struct SelectedBlock(pub BlockType);
+
+pub fn select_block(
+    mut select_block: EventReader<SelectBlockEvent>,
+    mut selected_block: ResMut<SelectedBlock>,
+) {
+    for select_block_event in select_block.iter() {
+        selected_block.0 = select_block_event.0;
+        println!("Selected block: {:?}", selected_block);
+    }
+}
+
 #[derive(Debug)]
 pub struct SelectInventorySlotEvent(pub usize);
 
-pub fn initialize_inventory_overlay(
+fn initialize_inventory_overlay(
     mut commands: Commands,
     mut inventory: ResMut<Inventory>,
     block_materials: ResMut<BlockMaterialStore>,
@@ -68,7 +86,7 @@ pub fn initialize_inventory_overlay(
     materials: Res<Assets<StandardMaterial>>,
 ) {
     commands
-        // main container
+        // container
         .spawn(NodeBundle {
             style: Style {
                 size: Size::width(Val::Percent(100.0)),
@@ -77,7 +95,7 @@ pub fn initialize_inventory_overlay(
             },
             ..default()
         })
-        // actual graphical interface
+        // actual UI
         .with_children(|container| {
             container
                 .spawn(NodeBundle {
@@ -100,17 +118,17 @@ pub fn initialize_inventory_overlay(
                 })
                 .with_children(|overlay| {
                     for slot in 0..INVENTORY_OVERLAY_SLOTS {
-                        let maybe_handle = match slot {
-                            0 => Some(block_materials.data.get(&BlockType::Stone).unwrap()),
-                            1 => Some(block_materials.data.get(&BlockType::Soil).unwrap()),
-                            2 => Some(block_materials.data.get(&BlockType::Grass).unwrap()),
+                        let maybe_color = match slot {
+                            0 => Some(block_materials.get_color(BlockType::Stone, &materials)),
+                            1 => Some(block_materials.get_color(BlockType::Soil, &materials)),
+                            2 => Some(block_materials.get_color(BlockType::Grass, &materials)),
                             _ => None,
                         };
 
                         let mut display_color = Color::rgba(0.0, 0.0, 0.0, 0.0);
 
-                        if let Some(material_handle) = maybe_handle {
-                            let color = materials.get(material_handle).unwrap().base_color;
+                        if let Some(block_color) = maybe_color {
+                            let color = block_color;
                             inventory.items[slot].contains = Some(color);
                             display_color = color;
                         }
