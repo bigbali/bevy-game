@@ -42,14 +42,14 @@ impl Chunk {
     ) -> Self {
         let mut instances = Vec::with_capacity(CHUNK_SIZE * CHUNK_SIZE);
 
-        for x in 0..CHUNK_SIZE as i32 {
-            for z in 0..CHUNK_SIZE as i32 {
-                for y in 0..64 as i32 {
+        for x in 0..CHUNK_SIZE {
+            for z in 0..CHUNK_SIZE {
+                for y in 0..64 {
                     // let height = (heightmap[x as usize * z as usize] as f32 * 4.0 + 8.0).round();
-                    let height = (heightmap[((pos.x as i32 * CHUNK_SIZE as i32 + x)
+                    let height = (heightmap[((pos.x as i32 * CHUNK_SIZE as i32 + x as i32)
                         * HEIGHTMAP_SIZE as i32
                         + pos.z as i32 * CHUNK_SIZE as i32
-                        + z) as usize] as f32
+                        + z as i32) as usize] as f32
                         * CHUNK_SIZE as f32)
                         .round();
 
@@ -57,15 +57,14 @@ impl Chunk {
                         continue;
                     }
 
-                    let mut color = Color::BLACK;
-
+                    let color;
                     if height as i32 == y {
                         let material = block_materials.data.get(&BlockType::Grass).unwrap();
-                        color = materials.get(material).unwrap().base_color
+                        color = materials.get(material).unwrap().base_color;
                     } else {
                         let material = block_materials.data.get(&BlockType::Stone).unwrap();
                         color = materials.get(material).unwrap().base_color;
-                    }
+                    };
 
                     let x = x as f32 + (pos.x * CHUNK_SIZE as f32);
                     let z = z as f32 + (pos.z * CHUNK_SIZE as f32);
