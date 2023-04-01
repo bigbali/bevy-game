@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use bevy::utils::HashMap;
+use bevy::{prelude::*, reflect};
 use block_mesh::{MergeVoxel, Voxel, VoxelVisibility};
 
 pub struct BlockPlugin;
@@ -7,15 +7,16 @@ pub struct BlockPlugin;
 impl Plugin for BlockPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BlockMaterialStore>()
-            .insert_resource(BlockType::default());
+            .insert_resource(BlockType::default())
+            .register_type::<Block>();
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug, Reflect, FromReflect)]
 pub struct Block {
-    position: UVec3,
-    visible: bool,
-    block_type: BlockType,
+    pub position: UVec3,
+    pub visible: bool,
+    pub block_type: BlockType,
 }
 
 impl Voxel for Block {
@@ -42,7 +43,9 @@ impl MergeVoxel for Block {
     }
 }
 
-#[derive(Debug, Default, Eq, Hash, PartialEq, Copy, Clone, Resource, Component)]
+#[derive(
+    Debug, Default, Eq, Hash, PartialEq, Copy, Clone, Resource, Component, Reflect, FromReflect,
+)]
 pub enum BlockType {
     #[default]
     Stone,

@@ -173,29 +173,29 @@ pub fn highlight_block_at_crosshair(
     mut remove_block_highlight: EventWriter<RemoveBlockHighlight>,
     _: EventReader<MouseMotion>,
 ) {
-    let (camera, camera_transform) = camera_query.single();
+    // let (camera, camera_transform) = camera_query.single();
 
-    let window = windows.get_single().unwrap();
-    let window_center = Vec2::new(window.width() / 2.0, window.height() / 2.0);
+    // let window = windows.get_single().unwrap();
+    // let window_center = Vec2::new(window.width() / 2.0, window.height() / 2.0);
 
-    let ray = camera
-        .viewport_to_world(camera_transform, window_center)
-        .unwrap();
+    // let ray = camera
+    //     .viewport_to_world(camera_transform, window_center)
+    //     .unwrap();
 
-    if let Some((entity, intersection)) = rapier_context.cast_ray_and_get_normal(
-        ray.origin,
-        ray.direction,
-        f32::MAX,
-        true,
-        QueryFilter::new(),
-    ) {
-        highlight_block.send(HighlightBlock {
-            entity,
-            intersection,
-        });
-    } else {
-        remove_block_highlight.send(RemoveBlockHighlight);
-    }
+    // if let Some((entity, intersection)) = rapier_context.cast_ray_and_get_normal(
+    //     ray.origin,
+    //     ray.direction,
+    //     f32::MAX,
+    //     true,
+    //     QueryFilter::new(),
+    // ) {
+    //     highlight_block.send(HighlightBlock {
+    //         entity,
+    //         intersection,
+    //     });
+    // } else {
+    //     remove_block_highlight.send(RemoveBlockHighlight);
+    // }
 }
 
 fn mouse_button_events(

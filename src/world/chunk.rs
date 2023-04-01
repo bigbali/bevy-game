@@ -1,25 +1,23 @@
-use std::array;
+use bevy::{prelude::*, utils::HashMap};
 
-use bevy::{
-    prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
-    utils::HashMap,
-};
-use bevy_aabb_instancing::{
-    Cuboid, CuboidMaterial, CuboidMaterialId, CuboidMaterialMap, Cuboids, COLOR_MODE_SCALAR_HUE,
-};
 use block_mesh::ndshape::ConstShape3u32;
 
-use super::block::Block;
+use super::block::{Block, BlockType};
 
 pub const CHUNK_SIZE: usize = 16;
 pub const CHUNK_SIZE_WITH_PADDING: u32 = CHUNK_SIZE as u32 + 2;
 
-pub struct ChunkRegistry(HashMap<IVec3, Chunk>);
+#[derive(Resource, Default, Debug, Reflect, FromReflect)]
+#[reflect(Resource)]
+pub struct ChunkRegistry {
+    pub chunks: HashMap<IVec3, Chunk>,
+}
 
-#[derive(Component)]
+#[derive(Default, Debug, Reflect, FromReflect)]
 pub struct Chunk {
-    pub blocks: Vec<Option<Block>>,
+    // possibly more sensible to use hashmap in order to access block by coords?
+    #[reflect(ignore)]
+    pub blocks: Vec<Block>,
     pub position: IVec3,
 }
 

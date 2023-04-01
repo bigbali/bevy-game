@@ -4,18 +4,12 @@ use bevy::{pbr::CascadeShadowConfig, prelude::*, window::CursorGrabMode};
 use bevy_aabb_instancing::VertexPullingRenderPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
-// use chunk::Chunk;
 
 use crate::world::WorldGenerationPlugin;
 
-// use crate::{block::*, chunk::initialize_example_chunk};
-
-// mod block;
 mod camera;
-// mod chunk;
 mod event;
 mod ui;
-mod util;
 mod world;
 
 fn main() {

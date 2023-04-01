@@ -19,12 +19,12 @@ fn create_camera_system(mut commands: Commands) {
         .spawn(Camera3dBundle::default())
         .insert(FpsCameraBundle::new(
             FpsCameraController {
-                translate_sensitivity: 5.0,
+                translate_sensitivity: 10.0,
                 mouse_rotate_sensitivity: Vec2 { x: 0.15, y: 0.15 },
                 smoothing_weight: 0.0,
                 ..default()
             },
-            Vec3::new(5.0, 5.0, 0.0),
+            Vec3::new(0.0, 10.0, 0.0),
             Vec3::new(0.0, 0.0, 0.0),
             Vec3::Y,
         ));

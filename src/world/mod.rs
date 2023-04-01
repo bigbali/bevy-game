@@ -1,5 +1,9 @@
-use bevy::prelude::{
-    App, AssetServer, Assets, Commands, Image, Mesh, Plugin, Res, ResMut, StandardMaterial,
+use bevy::{
+    prelude::{
+        App, AssetServer, Assets, Color, Commands, IVec3, Image, Mesh, Plugin, Res, ResMut,
+        SpatialBundle, StandardMaterial, UVec3, Vec3,
+    },
+    transform::commands,
 };
 use noise::{
     utils::{NoiseMap, NoiseMapBuilder, PlaneMapBuilder},
@@ -7,10 +11,13 @@ use noise::{
 };
 
 // use crate::chunk::CHUNK_SIZE;
-
 use crate::ui::debug::initialize_heightmap_overlay;
+use bevy_aabb_instancing::{Cuboid, CuboidMaterialId, Cuboids};
 
-use self::{block::*, chunk::CHUNK_SIZE};
+use self::{
+    block::*,
+    chunk::{Chunk, ChunkRegistry, ChunkShape, CHUNK_SIZE},
+};
 
 pub mod block;
 pub mod chunk;
@@ -23,20 +30,21 @@ pub struct WorldGenerationPlugin;
 impl Plugin for WorldGenerationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(BlockPlugin)
-            .add_startup_system(generate_chunks);
+            .add_startup_system(generate_chunks)
+            .insert_resource(ChunkRegistry::default())
+            .register_type::<ChunkRegistry>();
     }
 }
 
 pub fn generate_chunks(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
-    material_store: ResMut<BlockMaterialStore>,
+    block_material_store: ResMut<BlockMaterialStore>,
     mut meshes: ResMut<Assets<Mesh>>,
     asset_server: Res<AssetServer>,
     materials: Res<Assets<StandardMaterial>>,
+    mut chunks: ResMut<ChunkRegistry>,
 ) {
-    // with this we generate the terrain
-    let mut height_data = Vec::with_capacity(HEIGHTMAP_SIZE * HEIGHTMAP_SIZE);
     // and with this we render the heightmap to the UI
     let mut rgba_data = Vec::with_capacity(HEIGHTMAP_SIZE * HEIGHTMAP_SIZE * 4);
 
@@ -44,8 +52,6 @@ pub fn generate_chunks(
 
     for value in noise.iter() {
         let height = (value * 0.5 + 0.5).clamp(0.0, 1.0);
-
-        height_data.push(height);
 
         let height_as_rgba = (height * 255.0) as u8;
         rgba_data.push(height_as_rgba);
@@ -57,7 +63,17 @@ pub fn generate_chunks(
     }
 
     for x in 0..INITIAL_WORLD_SIZE_FOR_TESTING {
-        for z in 0..INITIAL_WORLD_SIZE_FOR_TESTING {}
+        for z in 0..INITIAL_WORLD_SIZE_FOR_TESTING {
+            build_chunk(
+                &mut rgba_data,
+                &noise,
+                IVec3::new(x as i32, 0, z as i32),
+                &block_material_store,
+                &materials,
+                &mut chunks,
+                &mut commands,
+            );
+        }
     }
 
     initialize_heightmap_overlay(
@@ -67,6 +83,78 @@ pub fn generate_chunks(
         HEIGHTMAP_SIZE as u32,
         rgba_data,
     )
+}
+
+fn build_chunk(
+    rgba_data: &mut Vec<u8>,
+    noise: &NoiseMap,
+    chunk_position: IVec3,
+    material_store: &ResMut<BlockMaterialStore>,
+    materials: &Res<Assets<StandardMaterial>>,
+    chunks: &mut ResMut<ChunkRegistry>,
+    commands: &mut Commands,
+) {
+    let mut instances = Vec::with_capacity(CHUNK_SIZE * CHUNK_SIZE);
+    let mut chunk = Chunk::default();
+
+    for block_x in 0..CHUNK_SIZE {
+        for block_z in 0..CHUNK_SIZE {
+            let hx = (chunk_position.x as usize * CHUNK_SIZE) + block_x;
+            let hy = (chunk_position.z as usize * CHUNK_SIZE) + block_z;
+
+            let height_raw = noise.get_value(hx, hy);
+            let height = (height_raw * 10.0 + 16.0).round();
+
+            let x = block_x as f32 + (chunk_position.x as f32 * CHUNK_SIZE as f32);
+            let z = block_z as f32 + (chunk_position.z as f32 * CHUNK_SIZE as f32);
+
+            for y in 0..64 as i32 {
+                if y as f32 > height as f32 {
+                    continue;
+                }
+
+                let mut color = Color::BLACK;
+                let block_type;
+                let block_position = UVec3::new(block_x as u32, y as u32, block_z as u32);
+
+                if height as i32 == y {
+                    color = material_store.get_color(BlockType::Grass, &materials);
+                    block_type = BlockType::Grass;
+                } else {
+                    color = material_store.get_color(BlockType::Stone, &materials);
+                    block_type = BlockType::Stone;
+                }
+
+                chunk.blocks.push(Block {
+                    block_type,
+                    position: block_position,
+                    visible: true,
+                });
+
+                let mut cuboid = Cuboid::new(
+                    Vec3::new(x, y as f32, z),
+                    Vec3::new(x + 1.0, y as f32 + 1.0, z + 1.0),
+                    color.as_rgba_u32(),
+                );
+                cuboid.set_depth_bias(0);
+
+                instances.push(cuboid);
+
+                // instances.push(TestBlock)
+            }
+        }
+    }
+
+    let cuboids = Cuboids::new(instances);
+    let aabb = cuboids.aabb();
+    commands
+        .spawn(SpatialBundle::default())
+        .insert((cuboids, aabb, CuboidMaterialId(0)));
+
+    chunks.chunks.insert(
+        IVec3::new(chunk_position.x, chunk_position.y, chunk_position.z),
+        chunk,
+    );
 }
 
 // pub fn generate_simple_mesh(samples: &[Block]) -> Mesh {
